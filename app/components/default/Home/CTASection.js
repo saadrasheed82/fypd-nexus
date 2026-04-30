@@ -93,7 +93,7 @@ const CTASection = () => {
 
             {/* buttons */}
             <div className="cta-btns opacity-0 flex flex-wrap items-center justify-center gap-4 mt-2">
-             <Button text="Get started" href="/signup" />
+             <Button text="Get started" href="/auth/login" />
 
           <Link
             href="/demo"

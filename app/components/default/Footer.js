@@ -31,7 +31,7 @@ const columns = [
   {
     heading: "Account",
     links: [
-      { label: "Sign Up", href: "/signup" },
+      { label: "Sign Up", href: "/auth/login" },
       { label: "Login", href: "/login" },
       { label: "Forgot Password", href: "/forgot-password" },
     ],

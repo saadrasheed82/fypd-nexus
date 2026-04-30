@@ -125,7 +125,7 @@ const Hero = () => {
 
         {/* Buttons */}
         <div className="hero-btns opacity-0 flex justify-center items-center gap-4 flex-wrap mb-20 px-6">
-          <Button text="Get started" href="/signup" />
+          <Button text="Get started" href="/auth/login" />
 
           <Link
             href="/demo"

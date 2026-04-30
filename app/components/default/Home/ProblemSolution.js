@@ -174,7 +174,7 @@ const ProblemSolution = () => {
           <p className="font-heading font-bold text-2xl text-white">
             Ready to fix your FYP process?
           </p>
-          <Button text="Get started" href="/signup" />
+          <Button text="Get started" href="/auth/login" />
         </div>
 
       </div>

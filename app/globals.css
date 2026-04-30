@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900&display=swap');
+@import "tailwindcss";
+
+body {
+  /* font-family: "Poppins", sans-serif; */
+  font-family: "Poppins", sans-serif;
+}
+
+.font-heading {
+  font-family: "Poppins", sans-serif;
+}
+
+.font-inter {
+  font-family: "Poppins", sans-serif;
+}
+/* 
+@theme {
+  --color-mechanical-dark: #141619;
+  --color-mechanical-dark2: #141019;
+  --color-mechanical-gray: #2C2E3A;
+  --color-mechanical-navy: #050A44;
+  --color-mechanical-blue: #0A21C0;
+  --color-mechanical-light: #B3B4BD;
+  --color-mechanical-white: #FFFFFF;
+}
+
+
+::selection{
+  background-color: #0A21C0;
+  color: white;
+} */
+
+/* .scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.docs-scrollbar::-webkit-scrollbar {
+  height: 0.40rem;
+}
+.docs-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+.docs-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbcbcb;
+  border-radius: 4px;
+}
+.docs-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #bbbbbb;
+} */
+
+::selection{
+  background-color: #F34F1F;
+  color: white;
+}
+
+.navigationSelector::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0%;
+  bottom: -100%; 
+  width: 200%;
+  height: 100%;
+  background: #F34F1F;    
+  color: white;        
+  white-space: nowrap;
+  animation: scrollText 10s linear infinite;
+  transform: translateX(0);
+  transition: all 0.5s ease;
+  z-index: 1;
+}
+
+.navigationSelector:hover::after {
+  left: 0%;
+  bottom: 0%; 
+  border-radius: 0%;
+  transition: all 0.5s ease;
+}
+
+@keyframes scrollText {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+} 
+
+/* Button sweep animation */
+.btn-sweep::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #0F172A;
+  border-radius: 999px;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.45s cubic-bezier(0.77, 0, 0.18, 1);
+  z-index: 0;
+}
+
+.btn-sweep:hover::before {
+  transform: scaleX(1);
+  transform-origin: left;
+}

@@ -34,6 +34,15 @@ export async function POST(request) {
 
   const { title, domain, category, supervisorId, abstract, problemStatement, proposedSolution, techStack } = await request.json();
 
+  if (!title || !domain || !category || !supervisorId || !abstract || !problemStatement || !proposedSolution) {
+    return NextResponse.json({ message: "Please complete all required proposal fields." }, { status: 400 });
+  }
+
+  const supervisor = await query("SELECT id FROM users WHERE id = $1 AND role = 'teacher'", [supervisorId]);
+  if (!supervisor.rows.length) {
+    return NextResponse.json({ message: "Please select a valid supervisor." }, { status: 400 });
+  }
+
   const existing = await query("SELECT id FROM projects WHERE student_id = $1", [user.id]);
   let result;
 

@@ -12,7 +12,7 @@ const domains = ["AI/ML", "Web Dev", "Mobile", "IoT", "Blockchain", "Cybersecuri
 export default function ProjectForm() {
   const [user, setUser] = useState(null);
   const [teachers, setTeachers] = useState([]);
-  const [form, setForm] = useState({ title: "", domain: "AI/ML", category: "Development-based", supervisorId: "tch-001", abstract: "", problemStatement: "", proposedSolution: "", techStack: "Next.js, React, MongoDB" });
+  const [form, setForm] = useState({ title: "", domain: "AI/ML", category: "Development-based", supervisorId: "", abstract: "", problemStatement: "", proposedSolution: "", techStack: "Next.js, React, MongoDB" });
   const router = useRouter();
 
   useEffect(() => {
@@ -38,6 +38,8 @@ export default function ProjectForm() {
             proposedSolution: existing.proposedSolution,
             techStack: existing.techStack.join(", "),
           });
+        } else if (teachersData.teachers?.length) {
+          setForm((prev) => ({ ...prev, supervisorId: teachersData.teachers[0].id }));
         }
       } catch {
         router.push("/auth/login");
@@ -50,7 +52,7 @@ export default function ProjectForm() {
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    if (!form.title.trim() || !form.abstract.trim() || !form.problemStatement.trim() || !form.proposedSolution.trim()) {
+    if (!form.title.trim() || !form.supervisorId || !form.abstract.trim() || !form.problemStatement.trim() || !form.proposedSolution.trim()) {
       toast.error("Please complete all required proposal fields.");
       return;
     }

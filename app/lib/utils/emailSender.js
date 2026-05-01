@@ -11,6 +11,14 @@ export async function sendCredentialsEmail(email, credentials, pdfBuffer) {
   }
 
   try {
+    // Determine the base URL based on environment
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000');
+    
+    const loginUrl = `${baseUrl}/auth/login`;
+
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
@@ -38,7 +46,7 @@ export async function sendCredentialsEmail(email, credentials, pdfBuffer) {
             <p><strong>Role:</strong> ${credentials.role}</p>
           </div>
           <p style="color: #dc2626; font-weight: bold;">Important: Please change your password after first login.</p>
-          <p><a href="http://localhost:3000/auth/login" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Login to FYDP Nexus</a></p>
+          <p><a href="${loginUrl}" style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Login to FYDP Nexus</a></p>
           <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Best regards,<br/>FYDP Nexus Team</p>
         </div>
       `,

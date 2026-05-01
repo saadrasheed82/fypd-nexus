@@ -18,11 +18,28 @@ export async function ensureFydpFeatureSchema() {
     description TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     screenshot_name TEXT,
+    screenshot_url TEXT,
     video_name TEXT,
+    video_url TEXT,
     feedback TEXT,
     submitted_at DATE,
     verified_at DATE,
     UNIQUE(project_id, month_number)
+  )`);
+
+  // Backfill/upgrade schema for older deployments (CREATE TABLE IF NOT EXISTS doesn't add new columns).
+  await query("ALTER TABLE fydp_monthly_tasks ADD COLUMN IF NOT EXISTS screenshot_url TEXT");
+  await query("ALTER TABLE fydp_monthly_tasks ADD COLUMN IF NOT EXISTS video_url TEXT");
+
+  await query(`CREATE TABLE IF NOT EXISTS fydp_task_files (
+    id SERIAL PRIMARY KEY,
+    task_id INTEGER REFERENCES fydp_monthly_tasks(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    data BYTEA NOT NULL,
+    created_at DATE DEFAULT CURRENT_DATE,
+    UNIQUE(task_id, kind)
   )`);
 
   await query(`CREATE TABLE IF NOT EXISTS fydp_announcements (

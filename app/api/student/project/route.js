@@ -117,9 +117,9 @@ export async function PATCH(request) {
   } else if (action === "submit-proof") {
     await query(
       `UPDATE fydp_monthly_tasks
-       SET screenshot_name = $1, video_name = $2, status = 'submitted', feedback = NULL, submitted_at = CURRENT_DATE
-       WHERE id = $3 AND project_id = $4`,
-      [body.screenshotName, body.videoName, body.taskId, project.id]
+       SET screenshot_name = $1, screenshot_url = $2, video_name = $3, video_url = $4, status = 'submitted', feedback = NULL, submitted_at = CURRENT_DATE
+       WHERE id = $5 AND project_id = $6`,
+      [body.screenshotName, body.screenshotUrl, body.videoName, body.videoUrl, body.taskId, project.id]
     );
     await query("UPDATE projects SET updated_at = CURRENT_DATE WHERE id = $1", [project.id]);
   } else if (typeof body.progress === "number") {

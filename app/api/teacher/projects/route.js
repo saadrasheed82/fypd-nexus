@@ -21,7 +21,20 @@ export async function GET() {
     projects, groups, rankings,
     pendingTaskSubmissions: pendingTasks.rows.map((task) => {
       const project = projects.find((item) => item.id === task.project_id);
-      return { id: task.id, projectId: task.project_id, projectTitle: project?.title || "Project", studentName: project?.studentName || "Student", group: project?.group || "Unassigned", monthNumber: task.month_number, title: task.title, screenshotName: task.screenshot_name, videoName: task.video_name, submittedAt: formatFeatureDate(task.submitted_at) };
+      return {
+        id: task.id,
+        projectId: task.project_id,
+        projectTitle: project?.title || "Project",
+        studentName: project?.studentName || "Student",
+        group: project?.group || "Unassigned",
+        monthNumber: task.month_number,
+        title: task.title,
+        screenshotName: task.screenshot_name,
+        screenshotUrl: task.screenshot_url,
+        videoName: task.video_name,
+        videoUrl: task.video_url,
+        submittedAt: formatFeatureDate(task.submitted_at),
+      };
     }),
     announcements: announcements.rows.map((item) => ({ id: item.id, title: item.title, message: item.message, targetGroup: item.target_group, date: formatFeatureDate(item.created_at) })),
   });

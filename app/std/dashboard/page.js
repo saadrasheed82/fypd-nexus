@@ -63,10 +63,39 @@ export default function StudentDashboard() {
 
   const submitProof = async (task) => {
     const proof = proofs[task.id] || {};
-    if (!proof.screenshotName || !proof.videoName) return toast.error("Upload screenshot and screen recording names first.");
-    const { data } = await axios.patch("/api/student/project", { action: "submit-proof", taskId: task.id, screenshotName: proof.screenshotName, videoName: proof.videoName });
-    setProject(data.project);
-    toast.success("Proof submitted to teacher dashboard.");
+    if (!proof.screenshotFile || !proof.videoFile) return toast.error("Upload a screenshot and a screen recording first.");
+
+    const upload = async (file, kind) => {
+      const form = new FormData();
+      form.append("taskId", task.id);
+      form.append("kind", kind);
+      form.append("file", file);
+      const response = await fetch("/api/student/proof-upload", { method: "POST", body: form });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload?.message || "Upload failed");
+      return payload;
+    };
+
+    try {
+      const [screenshot, video] = await Promise.all([
+        upload(proof.screenshotFile, "screenshot"),
+        upload(proof.videoFile, "video"),
+      ]);
+
+      const { data } = await axios.patch("/api/student/project", {
+        action: "submit-proof",
+        taskId: task.id,
+        screenshotName: screenshot.originalName,
+        screenshotUrl: screenshot.url,
+        videoName: video.originalName,
+        videoUrl: video.url,
+      });
+
+      setProject(data.project);
+      toast.success("Proof submitted to teacher dashboard.");
+    } catch (error) {
+      toast.error(error.message || "Unable to submit proof.");
+    }
   };
 
   const signOut = async () => { await axios.post("/api/auth/logout"); router.push("/auth/login"); };
@@ -114,5 +143,56 @@ export default function StudentDashboard() {
 function EmptyProposal() { return <div className="rounded-[2rem] bg-white p-10 shadow-sm"><p className="text-sm font-bold text-[#F34F1F]">No project submitted yet</p><h2 className="mt-2 text-3xl font-bold text-slate-900">Submit your final year project proposal.</h2><p className="mt-3 max-w-2xl text-slate-500">Your main dashboard unlocks after teacher approval.</p><Link href="/std/project-form" className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[#F34F1F] px-5 py-3 text-sm font-bold text-white"><Send size={16} /> Start proposal</Link></div>; }
 function LockedProject({ project, feedback }) { return <div className="rounded-[2rem] border border-amber-100 bg-white p-10 shadow-sm"><Lock className="text-[#F34F1F]" size={34} /><span className={'mt-5 inline-block rounded-full px-3 py-1 text-xs font-bold uppercase ' + (statusStyles[project.status] || "bg-slate-100 text-slate-600")}>{project.status}</span><h2 className="mt-4 text-3xl font-bold text-slate-900">Main dashboard locked</h2><p className="mt-3 max-w-2xl text-slate-500">Your proposal is waiting for approval or needs revision before monthly task tracking opens.</p>{feedback && <div className="mt-6 rounded-2xl bg-rose-50 p-5 text-sm text-rose-700"><XCircle className="mr-2 inline" size={18} /> {feedback.text}</div>}<Link href="/std/project-form" className="mt-6 inline-flex rounded-2xl bg-[#F34F1F] px-5 py-3 text-sm font-bold text-white">Correct and resubmit proposal</Link></div>; }
 function NoticeStrip({ announcements, notifications }) { const items = [...announcements, ...notifications].slice(0, 3); if (!items.length) return null; return <div className="mb-6 space-y-3">{items.map((item) => <div key={(item.targetGroup || item.kind || "n") + item.id} className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm text-slate-700"><Bell className="mr-2 inline text-[#F34F1F]" size={18} /><b>{item.title}</b> — {item.message}</div>)}</div>; }
-function TaskCard({ task, proofs, setProofs, submitProof }) { const proof = proofs[task.id] || {}; const icon = task.status === "verified" ? <CheckCircle2 className="text-emerald-500" /> : task.status === "rejected" ? <XCircle className="text-rose-500" /> : <Video className="text-slate-400" />; return <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5"><div className="flex items-start justify-between gap-4"><div className="flex gap-3">{icon}<div><p className="font-bold text-slate-900">Month {task.monthNumber}: {task.title}</p><p className="mt-1 text-sm text-slate-500">{task.description}</p></div></div><span className={'rounded-full px-2.5 py-1 text-xs font-bold uppercase ' + (taskStyles[task.status] || taskStyles.pending)}>{task.status}</span></div>{task.feedback && <p className="mt-3 rounded-xl bg-white p-3 text-sm text-rose-600">Teacher feedback: {task.feedback}</p>}<div className="mt-4 grid gap-3 md:grid-cols-3"><input type="file" accept="image/*" onChange={(e) => setProofs((prev) => ({ ...prev, [task.id]: { ...proof, screenshotName: e.target.files?.[0]?.name || "" } }))} className="rounded-xl bg-white p-2 text-xs" /><input type="file" accept="video/*" onChange={(e) => setProofs((prev) => ({ ...prev, [task.id]: { ...proof, videoName: e.target.files?.[0]?.name || "" } }))} className="rounded-xl bg-white p-2 text-xs" /><button onClick={() => submitProof(task)} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white">Submit proof</button></div>{(task.screenshotName || task.videoName) && <p className="mt-3 text-xs text-slate-500">Submitted: {task.screenshotName} • {task.videoName}</p>}</div>; }
+function TaskCard({ task, proofs, setProofs, submitProof }) {
+  const proof = proofs[task.id] || {};
+  const icon =
+    task.status === "verified" ? <CheckCircle2 className="text-emerald-500" /> :
+    task.status === "rejected" ? <XCircle className="text-rose-500" /> :
+    <Video className="text-slate-400" />;
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex gap-3">
+          {icon}
+          <div>
+            <p className="font-bold text-slate-900">Month {task.monthNumber}: {task.title}</p>
+            <p className="mt-1 text-sm text-slate-500">{task.description}</p>
+          </div>
+        </div>
+        <span className={"rounded-full px-2.5 py-1 text-xs font-bold uppercase " + (taskStyles[task.status] || taskStyles.pending)}>{task.status}</span>
+      </div>
+
+      {task.feedback && <p className="mt-3 rounded-xl bg-white p-3 text-sm text-rose-600">Teacher feedback: {task.feedback}</p>}
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0] || null;
+            setProofs((prev) => ({ ...prev, [task.id]: { ...proof, screenshotFile: file, screenshotName: file?.name || "" } }));
+          }}
+          className="rounded-xl bg-white p-2 text-xs"
+        />
+        <input
+          type="file"
+          accept="video/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0] || null;
+            setProofs((prev) => ({ ...prev, [task.id]: { ...proof, videoFile: file, videoName: file?.name || "" } }));
+          }}
+          className="rounded-xl bg-white p-2 text-xs"
+        />
+        <button onClick={() => submitProof(task)} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white">
+          Submit proof
+        </button>
+      </div>
+
+      {(task.screenshotName || task.videoName) && (
+        <p className="mt-3 text-xs text-slate-500">Submitted: {task.screenshotName} • {task.videoName}</p>
+      )}
+    </div>
+  );
+}
 function Panel({ title, children }) { return <div className="rounded-[2rem] bg-white p-6 shadow-sm"><h3 className="mb-4 text-lg font-bold text-slate-900">{title}</h3><div className="space-y-3">{children}</div></div>; }

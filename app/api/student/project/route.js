@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "../../../lib/auth";
 import { query } from "../../../lib/db";
 import { projectSelect, hydrateProjects } from "../../../lib/projects";
@@ -32,10 +32,21 @@ export async function POST(request) {
   const user = await requireUser("student");
   if (!user) return unauthorized();
 
-  const { title, domain, category, supervisorId, abstract, problemStatement, proposedSolution, techStack } = await request.json();
+  await ensureFydpFeatureSchema();
+  const { title, domain, category, supervisorId, abstract, problemStatement, proposedSolution, techStack, teamMembers } = await request.json();
 
   if (!title || !domain || !category || !supervisorId || !abstract || !problemStatement || !proposedSolution) {
     return NextResponse.json({ message: "Please complete all required proposal fields." }, { status: 400 });
+  }
+
+  if (!teamMembers || !Array.isArray(teamMembers) || teamMembers.length < 2) {
+    return NextResponse.json({ message: "Team must have at least 2 members (including team lead)." }, { status: 400 });
+  }
+
+  for (const member of teamMembers) {
+    if (!member.fullName || !member.rollNo || !member.department || !member.cnic) {
+      return NextResponse.json({ message: "All team members must have full name, roll number, department, and CNIC." }, { status: 400 });
+    }
   }
 
   const supervisor = await query("SELECT id FROM users WHERE id = $1 AND role = 'teacher'", [supervisorId]);
@@ -44,24 +55,37 @@ export async function POST(request) {
   }
 
   const existing = await query("SELECT id FROM projects WHERE student_id = $1", [user.id]);
-  let result;
+  let projectId;
 
   if (existing.rows.length > 0) {
-    result = await query(
+    const result = await query(
       `UPDATE projects SET title = $1, domain = $2, category = $3, supervisor_id = $4, abstract = $5,
        problem_statement = $6, proposed_solution = $7, tech_stack = $8, status = 'pending', updated_at = CURRENT_DATE
        WHERE student_id = $9 RETURNING id`,
       [title, domain, category, supervisorId, abstract, problemStatement, proposedSolution, techStack, user.id]
     );
+    projectId = result.rows[0].id;
   } else {
-    result = await query(
+    const result = await query(
       `INSERT INTO projects (title, domain, category, supervisor_id, student_id, abstract, problem_statement, proposed_solution, tech_stack)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       [title, domain, category, supervisorId, user.id, abstract, problemStatement, proposedSolution, techStack]
     );
+    projectId = result.rows[0].id;
   }
 
-  const projectResult = await query(`${projectSelect} WHERE p.id = $1`, [result.rows[0].id]);
+  await query("DELETE FROM project_team_members WHERE project_id = $1", [projectId]);
+
+  for (let i = 0; i < teamMembers.length; i++) {
+    const member = teamMembers[i];
+    await query(
+      `INSERT INTO project_team_members (project_id, full_name, roll_no, department, cnic, is_lead, position)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [projectId, member.fullName, member.rollNo, member.department, member.cnic, i === 0, i]
+    );
+  }
+
+  const projectResult = await query(`${projectSelect} WHERE p.id = $1`, [projectId]);
   const projects = await hydrateProjects(projectResult.rows);
   return NextResponse.json({ project: projects[0] });
 }
@@ -106,3 +130,4 @@ export async function PATCH(request) {
   const projects = await hydrateProjects(updated.rows);
   return NextResponse.json({ ok: true, project: projects[0] || null });
 }
+

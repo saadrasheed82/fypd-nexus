@@ -1,18 +1,20 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { ArrowLeft, Save, Send } from "lucide-react";
+import { ArrowLeft, Plus, Save, Send, Trash2 } from "lucide-react";
 import axios from "axios";
 
 const domains = ["AI/ML", "Web Dev", "Mobile", "IoT", "Blockchain", "Cybersecurity", "AR/VR", "Other"];
+const emptyLead = { fullName: "", rollNo: "", department: "", cnic: "", isLead: true };
+const emptyMember = { fullName: "", rollNo: "", department: "", cnic: "", isLead: false };
 
 export default function ProjectForm() {
   const [user, setUser] = useState(null);
   const [teachers, setTeachers] = useState([]);
-  const [form, setForm] = useState({ title: "", domain: "AI/ML", category: "Development-based", supervisorId: "", abstract: "", problemStatement: "", proposedSolution: "", techStack: "Next.js, React, MongoDB" });
+  const [form, setForm] = useState({ title: "", domain: "AI/ML", category: "Development-based", supervisorId: "", abstract: "", problemStatement: "", proposedSolution: "", techStack: "Next.js, React, MongoDB", teamMembers: [emptyLead, emptyMember] });
   const router = useRouter();
 
   useEffect(() => {
@@ -37,9 +39,14 @@ export default function ProjectForm() {
             problemStatement: existing.problemStatement,
             proposedSolution: existing.proposedSolution,
             techStack: existing.techStack.join(", "),
+            teamMembers: existing.teamMembers?.length ? existing.teamMembers : [{ ...emptyLead, fullName: me.user.name || "", department: me.user.department || "" }, emptyMember],
           });
-        } else if (teachersData.teachers?.length) {
-          setForm((prev) => ({ ...prev, supervisorId: teachersData.teachers[0].id }));
+        } else {
+          setForm((prev) => ({
+            ...prev,
+            supervisorId: teachersData.teachers?.[0]?.id || "",
+            teamMembers: [{ ...emptyLead, fullName: me.user.name || "", department: me.user.department || "" }, emptyMember],
+          }));
         }
       } catch {
         router.push("/auth/login");
@@ -50,14 +57,39 @@ export default function ProjectForm() {
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
+  const updateTeamMember = (index, key, value) => {
+    setForm((prev) => ({
+      ...prev,
+      teamMembers: prev.teamMembers.map((member, i) => (i === index ? { ...member, [key]: value } : member)),
+    }));
+  };
+
+  const addTeamMember = () => setForm((prev) => ({ ...prev, teamMembers: [...prev.teamMembers, { ...emptyMember }] }));
+
+  const removeTeamMember = (index) => {
+    if (index === 0) return toast.error("Team lead cannot be removed.");
+    if (form.teamMembers.length <= 2) return toast.error("Add at least one team member besides the lead.");
+    setForm((prev) => ({ ...prev, teamMembers: prev.teamMembers.filter((_, i) => i !== index) }));
+  };
+
   const onSubmit = async (event) => {
     event.preventDefault();
     if (!form.title.trim() || !form.supervisorId || !form.abstract.trim() || !form.problemStatement.trim() || !form.proposedSolution.trim()) {
       toast.error("Please complete all required proposal fields.");
       return;
     }
+    if (form.teamMembers.length < 2) {
+      toast.error("Add at least one team member besides the lead.");
+      return;
+    }
+    for (const member of form.teamMembers) {
+      if (!member.fullName.trim() || !member.rollNo.trim() || !member.department.trim() || !member.cnic.trim()) {
+        toast.error("All team members must have full name, roll number, department, and CNIC.");
+        return;
+      }
+    }
     try {
-      await axios.post("/api/student/project", { ...form, techStack: form.techStack.split(",").map((item) => item.trim()).filter(Boolean) });
+      await axios.post("/api/student/project", { ...form, teamMembers: form.teamMembers, techStack: form.techStack.split(",").map((item) => item.trim()).filter(Boolean) });
       toast.success("Proposal saved to Neon and submitted for review.");
       router.push("/std/dashboard");
     } catch (error) {
@@ -74,7 +106,7 @@ export default function ProjectForm() {
           <div>
             <Link href="/std/dashboard" className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#F34F1F]"><ArrowLeft size={16} /> Back to dashboard</Link>
             <h1 className="text-3xl font-bold text-slate-900">Project proposal</h1>
-            <p className="mt-2 text-slate-500">Submit a complete frontend-demo proposal workflow.</p>
+            <p className="mt-2 text-slate-500">Only the team lead logs in. Add all project team members here.</p>
           </div>
           <button className="inline-flex items-center gap-2 rounded-2xl bg-[#F34F1F] px-5 py-3 text-sm font-bold text-white"><Send size={16} /> Submit</button>
         </div>
@@ -95,9 +127,36 @@ export default function ProjectForm() {
             <Textarea label="Proposed solution" value={form.proposedSolution} onChange={(value) => update("proposedSolution", value)} />
           </Card>
         </div>
-          <div className="mt-6 rounded-[2rem] border border-emerald-100 bg-emerald-50 p-5 text-sm text-slate-600">
-            <Save className="mr-2 inline text-emerald-600" size={18} /> Your proposal is saved to the Neon PostgreSQL database and sent to the teacher review dashboard.
+
+        <section className="mt-6 rounded-[2rem] bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Team members</h2>
+              <p className="text-sm text-slate-500">Include the team lead and at least one other member.</p>
+            </div>
+            <button type="button" onClick={addTeamMember} className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-bold text-white"><Plus size={16} /> Add member</button>
           </div>
+          <div className="space-y-4">
+            {form.teamMembers.map((member, index) => (
+              <div key={index} className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <p className="font-bold text-slate-900">{index === 0 ? "Team lead" : `Member ${index + 1}`}</p>
+                  {index > 0 && <button type="button" onClick={() => removeTeamMember(index)} className="inline-flex items-center gap-1 text-sm font-bold text-rose-600"><Trash2 size={15} /> Remove</button>}
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Input label="Full name" value={member.fullName} onChange={(value) => updateTeamMember(index, "fullName", value)} placeholder="Student full name" />
+                  <Input label="Roll number" value={member.rollNo} onChange={(value) => updateTeamMember(index, "rollNo", value)} placeholder="BSCS-2022-001" />
+                  <Input label="Department" value={member.department} onChange={(value) => updateTeamMember(index, "department", value)} placeholder="Computer Science" />
+                  <Input label="CNIC" value={member.cnic} onChange={(value) => updateTeamMember(index, "cnic", value)} placeholder="12345-1234567-1" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="mt-6 rounded-[2rem] border border-emerald-100 bg-emerald-50 p-5 text-sm text-slate-600">
+          <Save className="mr-2 inline text-emerald-600" size={18} /> Your proposal and team roster are saved to the Neon PostgreSQL database and sent to the teacher review dashboard.
+        </div>
       </form>
     </main>
   );

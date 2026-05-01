@@ -51,6 +51,18 @@ export async function ensureFydpFeatureSchema() {
     body TEXT NOT NULL,
     created_at DATE DEFAULT CURRENT_DATE
   )`);
+
+  await query(`CREATE TABLE IF NOT EXISTS project_team_members (
+    id SERIAL PRIMARY KEY,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    roll_no TEXT NOT NULL,
+    department TEXT NOT NULL,
+    cnic TEXT NOT NULL,
+    is_lead BOOLEAN NOT NULL DEFAULT false,
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at DATE DEFAULT CURRENT_DATE
+  )`);
 }
 
 export function generateRoadmapFromText(text = "", months = 6) {

@@ -1,9 +1,9 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
-import { BarChart, Bar, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line, Legend } from "recharts";
 import { BellRing, CheckCircle2, Clock, LogOut, Megaphone, RefreshCcw, Search, Settings2, Trophy, XCircle } from "lucide-react";
 import axios from "axios";
 
@@ -28,7 +28,9 @@ export default function TeacherDashboard() {
   const [user, setUser] = useState(null);
   const [projects, setProjects] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [rankings, setRankings] = useState([]);
+  const [metrics, setMetrics] = useState({ months: [], overall: [], byGroup: [], topGroupsLatestMonth: [] });
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [selectedGroup, setSelectedGroup] = useState("");
   const [pendingTasks, setPendingTasks] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [query, setQuery] = useState("");
@@ -39,27 +41,49 @@ export default function TeacherDashboard() {
   const [taskFeedback, setTaskFeedback] = useState({});
   const router = useRouter();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
-      const [{ data: me }, { data }] = await Promise.all([axios.get("/api/me"), axios.get("/api/teacher/projects")]);
+      setMetricsLoading(true);
+      const [{ data: me }, { data }, { data: metricsData }] = await Promise.all([
+        axios.get("/api/me"),
+        axios.get("/api/teacher/projects"),
+        axios.get("/api/teacher/dashboard/metrics"),
+      ]);
       if (!me.user || me.user.role !== "teacher") return router.push("/auth/login");
       setUser(me.user);
       setProjects(data.projects || []);
       setGroups(data.groups || []);
-      setRankings(data.rankings || []);
       setPendingTasks(data.pendingTaskSubmissions || []);
       setAnnouncements(data.announcements || []);
       setActive((previous) => (data.projects || []).find((project) => project.id === previous?.id) || data.projects?.[0] || null);
+      setMetrics(metricsData || { months: [], overall: [], byGroup: [], topGroupsLatestMonth: [] });
+      const nextGroups = (metricsData?.byGroup || []).map((item) => item.group);
+      setSelectedGroup((prev) => (prev && nextGroups.includes(prev) ? prev : (nextGroups[0] || "")));
     } catch {
       router.push("/auth/login");
+    } finally {
+      setMetricsLoading(false);
     }
-  };
+  }, [router]);
 
-  useEffect(() => { load(); }, [router]);
+  useEffect(() => { load(); }, [load]);
 
   const filtered = useMemo(() => projects.filter((project) => (project.title + " " + project.studentName + " " + project.domain + " " + (project.teamMembers || []).map((member) => member.fullName).join(" ")).toLowerCase().includes(query.toLowerCase())), [projects, query]);
   const pendingCount = projects.filter((project) => project.status === "pending").length;
   const avgProgress = projects.length ? Math.round(projects.reduce((sum, project) => sum + project.progress, 0) / projects.length) : 0;
+  const chartData = useMemo(() => {
+    const months = metrics.months || [];
+    const overallByMonth = new Map((metrics.overall || []).map((row) => [row.month, row.progress]));
+    const groupSeries = (metrics.byGroup || []).find((g) => g.group === selectedGroup)?.series || [];
+    const groupByMonth = new Map(groupSeries.map((row) => [row.month, row.progress]));
+
+    return months.map((month) => ({
+      month: `M${month}`,
+      overall: overallByMonth.get(month) ?? 0,
+      group: groupByMonth.get(month) ?? 0,
+    }));
+  }, [metrics, selectedGroup]);
+  const topGroupsLatestMonth = metrics.topGroupsLatestMonth || [];
 
   const decideProposal = async (status) => {
     if (!active) return;
@@ -164,7 +188,71 @@ export default function TeacherDashboard() {
 
           <div className="space-y-6">
             <div className="rounded-[2rem] bg-white p-8 shadow-sm">{active ? <><span className={(statusClass[active.status] || "bg-slate-100 text-slate-600") + " rounded-full px-3 py-1 text-xs font-bold uppercase"}>{fixMojibake(active.status)}</span><h2 className="mt-4 text-3xl font-bold text-slate-900">{fixMojibake(active.title)}</h2><p className="mt-2 text-slate-500">{fixMojibake(active.studentName)} • {fixMojibake(active.domain)} • Submitted {fixMojibake(active.submittedAt)}</p><div className="mt-8 grid gap-5 md:grid-cols-2"><Block title="Abstract" text={fixMojibake(active.abstract)} /><Block title="Problem statement" text={fixMojibake(active.problemStatement)} /><Block title="Proposed solution" text={fixMojibake(active.proposedSolution)} /><Block title="Tech stack" text={fixMojibake(active.techStack.join(", "))} /></div><TeamRoster members={active.teamMembers || []} /><div className="mt-8 rounded-2xl bg-slate-50 p-5"><label className="mb-2 block text-sm font-bold text-slate-700">Proposal feedback</label><textarea value={comment} onChange={(event) => setComment(event.target.value)} rows={4} placeholder="Write feedback for the student..." className="w-full resize-none rounded-2xl border border-slate-200 bg-white p-4 text-sm outline-none focus:border-[#F34F1F]" /><div className="mt-4 flex flex-wrap gap-3"><button onClick={() => decideProposal("approved")} className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"><CheckCircle2 size={16} /> Approve</button><button onClick={() => decideProposal("revision")} className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-5 py-3 text-sm font-bold text-white"><XCircle size={16} /> Request revision</button></div></div></> : <p className="text-slate-500">No supervised projects yet.</p>}</div>
-            <div className="grid gap-6 lg:grid-cols-2"><ChartCard title="Group progress"><ResponsiveContainer width="100%" height={250}><BarChart data={groups}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="progress" fill="#F34F1F" radius={[10, 10, 0, 0]} /></BarChart></ResponsiveContainer></ChartCard><ChartCard title="Top rankings"><ResponsiveContainer width="100%" height={250}><PieChart><Pie data={rankings} dataKey="progress" nameKey="name" innerRadius={55} outerRadius={90}>{rankings.map((entry, index) => <Cell key={entry.name} fill={colors[index % colors.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer><div className="mt-4 space-y-2">{rankings.map((group, index) => <div key={group.name} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm"><span>#{index + 1} {group.name}</span><b>{group.progress}%</b></div>)}</div></ChartCard></div>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ChartCard title="Progress over time">
+                {metricsLoading ? (
+                  <p className="text-sm text-slate-500">Loading progress metrics…</p>
+                ) : metrics.months?.length ? (
+                  <>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-slate-600">Cumulative verified progress by month</p>
+                      <select
+                        value={selectedGroup}
+                        onChange={(event) => setSelectedGroup(event.target.value)}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700 outline-none"
+                      >
+                        {(metrics.byGroup || []).map((item) => (
+                          <option key={item.group} value={item.group}>
+                            {fixMojibake(item.group)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="month" />
+                        <YAxis domain={[0, 100]} />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="overall" name="Overall" stroke="#0F172A" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="group" name={selectedGroup || "Group"} stroke="#F34F1F" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-500">No monthly task data yet.</p>
+                )}
+              </ChartCard>
+              <ChartCard title="Top groups (latest month)">
+                {metricsLoading ? (
+                  <p className="text-sm text-slate-500">Loading rankings…</p>
+                ) : topGroupsLatestMonth.length ? (
+                  <>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie data={topGroupsLatestMonth} dataKey="progress" nameKey="name" innerRadius={55} outerRadius={90}>
+                          {topGroupsLatestMonth.map((entry, index) => (
+                            <Cell key={entry.name} fill={colors[index % colors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="mt-4 space-y-2">
+                      {topGroupsLatestMonth.map((group, index) => (
+                        <div key={group.name} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                          <span>#{index + 1} {fixMojibake(group.name)}</span>
+                          <b>{group.progress}%</b>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-500">No rankings available yet.</p>
+                )}
+              </ChartCard>
+            </div>
             <Card title="Announcements" icon={Megaphone}><div className="grid gap-3 md:grid-cols-3"><select value={announcementForm.targetGroup} onChange={(event) => setAnnouncementForm((prev) => ({ ...prev, targetGroup: event.target.value }))} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"><option value="all">Entire class</option>{groups.map((group) => <option key={group.name} value={group.name}>{fixMojibake(group.name)}</option>)}</select><input value={announcementForm.title} onChange={(event) => setAnnouncementForm((prev) => ({ ...prev, title: event.target.value }))} placeholder="Title" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none" /><button onClick={sendAnnouncement} className="rounded-2xl bg-[#F34F1F] px-5 py-3 text-sm font-bold text-white">Broadcast</button></div><textarea value={announcementForm.message} onChange={(event) => setAnnouncementForm((prev) => ({ ...prev, message: event.target.value }))} rows={4} placeholder="Type announcement for all groups or one group..." className="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none focus:border-[#F34F1F]" /><div className="mt-5 space-y-3">{announcements.map((item) => <div key={item.id} className="rounded-2xl bg-slate-50 p-4 text-sm"><p className="font-bold text-slate-900">{fixMojibake(item.title)}</p><p className="mt-1 text-slate-500">{fixMojibake(item.message)}</p><p className="mt-2 text-xs text-slate-400">To: {fixMojibake(item.targetGroup)} • {fixMojibake(item.date)}</p></div>)}</div></Card>
           </div>
         </div>

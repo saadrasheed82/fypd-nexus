@@ -8,7 +8,7 @@ export async function POST(request) {
     const user = await requireUser("admin");
     if (!user) return unauthorized();
 
-    const { email, role, name, department, rollno, cnic } = await request.json();
+    const { email, role, name, department } = await request.json();
 
     if (!email || !role || !name) {
       return NextResponse.json(
@@ -27,8 +27,8 @@ export async function POST(request) {
     const password = crypto.randomBytes(8).toString("hex");
 
     const result = await query(
-      `INSERT INTO users (name, email, password, role, department, student_group, designation, avatar, rollno, cnic)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO users (name, email, password, role, department, student_group, designation, avatar)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         name,
@@ -39,8 +39,6 @@ export async function POST(request) {
         role === "student" ? "New Group" : null,
         role === "teacher" ? "Supervisor" : null,
         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=300&auto=format&fit=crop",
-        rollno || null,
-        cnic || null,
       ]
     );
 
@@ -55,8 +53,6 @@ export async function POST(request) {
           email: newUser.email,
           role: newUser.role,
           password: password,
-          rollno: newUser.rollno,
-          cnic: newUser.cnic,
         },
       },
       { status: 201 }

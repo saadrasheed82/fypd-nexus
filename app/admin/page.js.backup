@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -12,8 +12,6 @@ export default function AdminPage() {
     email: "",
     role: "student",
     department: "Computer Science",
-    rollno: "",
-    cnic: "",
   });
   const [loading, setLoading] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState(null);
@@ -44,10 +42,6 @@ export default function AdminPage() {
         email: "",
         role: "student",
         department: "Computer Science",
-        rollno: "",
-        cnic: "",
-    rollno: "",
-    cnic: "",
       });
     } catch (error) {
       toast.error(error.message);
@@ -92,8 +86,6 @@ Name: ${createdCredentials.name}
 Email: ${createdCredentials.email}
 Password: ${createdCredentials.password}
 Role: ${createdCredentials.role}
-Roll Number: ${createdCredentials.rollno || "N/A"}
-CNIC: ${createdCredentials.cnic || "N/A"}
 
 Please keep these credentials safe and change your password after first login.
 
@@ -202,35 +194,6 @@ Generated on: ${new Date().toLocaleString()}
                 placeholder="Enter department"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Roll Number (Format: CT-24284)
-              </label>
-              <input
-                type="text"
-                value={formData.rollno}
-                onChange={(e) =>
-                  setFormData({ ...formData, rollno: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="CT-24284"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                CNIC (Format: 42101-1234567-8)
-              </label>
-              <input
-                type="text"
-                value={formData.cnic}
-                onChange={(e) =>
-                  setFormData({ ...formData, cnic: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="42101-1234567-8"
-              />
-            </div>
 
             <button
               type="submit"
@@ -268,14 +231,6 @@ Generated on: ${new Date().toLocaleString()}
                 <p className="text-gray-700">
                   <span className="font-semibold">Role:</span>{" "}
                   {createdCredentials.role}
-                </p>
-                <p className="text-gray-700">
-                  <span className="font-semibold">Roll Number:</span>{" "}
-                  {createdCredentials.rollno || "N/A"}
-                </p>
-                <p className="text-gray-700">
-                  <span className="font-semibold">CNIC:</span>{" "}
-                  {createdCredentials.cnic || "N/A"}
                 </p>
               </div>
 

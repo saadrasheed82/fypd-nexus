@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { generateMilestonesWithAI } from "./aiService";
 
 export async function ensureFydpFeatureSchema() {
   await query(`CREATE TABLE IF NOT EXISTS fydp_groups (
@@ -65,7 +66,12 @@ export async function ensureFydpFeatureSchema() {
   )`);
 }
 
-export function generateRoadmapFromText(text = "", months = 6) {
+export async function generateRoadmapFromText(text = "", months = 6) {
+  const aiMilestones = await generateMilestonesWithAI(text, months);
+  if (aiMilestones?.length) {
+    return aiMilestones;
+  }
+
   const lower = text.toLowerCase();
   const inferred = [];
   if (lower.includes("auth") || lower.includes("login")) inferred.push("Build Auth/Login Page");

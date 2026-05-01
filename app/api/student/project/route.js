@@ -105,7 +105,7 @@ export async function PATCH(request) {
   if (action === "generate-roadmap") {
     if (project.status !== "approved") return NextResponse.json({ message: "Roadmap unlocks after teacher approval." }, { status: 403 });
     const text = [body.documentText, project.abstract, project.problem_statement, project.proposed_solution].filter(Boolean).join("\n");
-    const roadmap = generateRoadmapFromText(text, Number(body.months) || 6);
+    const roadmap = await generateRoadmapFromText(text, Number(body.months) || 6);
     for (const item of roadmap) {
       await query(
         `INSERT INTO fydp_monthly_tasks (project_id, month_number, title, description)
